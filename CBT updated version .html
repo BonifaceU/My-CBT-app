@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CBT App with Calculator</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f0f0f0; }
+    .container {
+      max-width: 600px; margin: 40px auto; background: #fff; padding: 20px;
+      border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    .hidden { display: none; }
+    h2 { text-align: center; }
+    input[type="text"] {
+      width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc;
+    }
+    button {
+      padding: 10px 20px; margin: 5px; border: none;
+      border-radius: 5px; background: #007BFF; color: white; cursor: pointer;
+    }
+    button:hover { background: #0056b3; }
+    #timer { font-weight: bold; text-align: right; margin-bottom: 10px; }
+    .question { margin: 20px 0; }
+    .option { margin: 5px 0; }
+    marquee { color: #007BFF; font-size: 18px; margin-bottom: 20px; }
+    .warning { color: red; }
+    .normal { color: green; }
+    .calculator {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      background: #fff;
+      border-radius: 5px;
+      width: 150px;
+      display: none; /* Initially hidden */
+    }
+    .calc-display { font-size: 20px; margin-bottom: 10px; }
+    .calc-buttons button {
+      width: 30%;
+      margin: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="loginPage">
+  <marquee>BONIFACE USHAHEMBA CBT App</marquee>
+  <h2>Enter Registration Number</h2>
+  <input type="text" id="regNo" placeholder="Enter Registration Number" />
+  <button onclick="startSubjectSelection()">Start</button>
+</div>
+
+<div class="container hidden" id="subjectPage">
+  <marquee>BONIFACE USHAHEMBA CBT App</marquee>
+  <h2>Select Subject</h2>
+  <button onclick="startQuiz('English')">English</button>
+  <button onclick="startQuiz('Physics')">Physics</button>
+  <button onclick="startQuiz('Chemistry')">Chemistry</button>
+  <button onclick="startQuiz('Biology')">Biology</button>
+  <button onclick="startQuiz('Mathematics')">Mathematics</button>
+</div>
+
+<div class="container hidden" id="quizPage">
+  <div id="timer" class="normal">05:00</div>
+  <h2 id="subjectTitle"></h2>
+  <div class="question" id="questionText"></div>
+  <div id="options"></div>
+  <button onclick="prevQuestion()">Previous Question</button>
+  <button onclick="nextQuestion()">Next Question</button>
+  <button onclick="prevSubject()">Previous Subject</button>
+  <button onclick="nextSubject()">Next Subject</button>
+</div>
+
+<div class="container hidden" id="submitPage">
+  <h2>Submit Your Test</h2>
+  <button onclick="printResults()">Print Results</button>
+  <button onclick="submitQuiz()">Submit</button>
+  <div id="scoreResult"></div>
+</div>
+
+<div class="calculator" id="calculatorPage">
+  <h2>Calculator</h2>
+  <div class="calc-display" id="calcDisplay">0</div>
+  <input type="text" id="calcInput" placeholder="Enter calculation" />
+  <div class="calc-buttons">
+    <button onclick="calculate()">=</button>
+    <button onclick="clearCalc()">C</button>
+    <button onclick="appendToCalc('+')">+</button>
+    <button onclick="appendToCalc('-')">-</button>
+    <button onclick="appendToCalc('*')">×</button>
+    <button onclick="appendToCalc('/')">÷</button>
+  </div>
+  <button onclick="toggleCalculator()">Close</button>
+</div>
+
+<script>
+  let subjects = ["English", "Physics", "Chemistry", "Biology", "Mathematics"];
+  let currentSubjectIndex = 0;
+  let currentQuestion = 0;
+  let userAnswers = {};
+  let timer;
+  let timeLeft = 300; // 5 minutes
+
+  const questions = {
+    English: [
+      { q: "1. What is the synonym of 'happy'?", options: ["Sad", "Joyful", "Angry", "Tired"], answer: "Joyful" },
+      { q: "2. Identify the metaphor: 'Time is a thief.'", options: ["Time steals", "Time is valuable", "Time passes quickly", "Time runs away"], answer: "Time steals" },
+      { q: "3. Which of the following is an example of alliteration?", options: ["Peter Piper picked", "As brave as a lion", "The wind whispered", "The sun smiled"], answer: "Peter Piper picked" },
+      { q: "4. What is the main theme of 'Romeo and Juliet'?", options: ["Friendship", "Love and conflict", "Betrayal", "War"], answer: "Love and conflict" },
+      { q: "5. What is an antonym for 'difficult'?", options: ["Easy", "Hard", "Tough", "Challenging"], answer: "Easy" }
+    ],
+    Physics: [
+      { q: "1. What is the unit of force?", options: ["Newton", "Joule", "Watt", "Pascal"], answer: "Newton" },
+      { q: "2. Which law states that for every action, there is an equal and opposite reaction?", options: ["Newton's First Law", "Newton's Second Law", "Newton's Third Law", "Law of Conservation of Energy"], answer: "Newton's Third Law" },
+      { q: "3. What is the acceleration due to gravity on Earth?", options: ["9.8 m/s²", "10 m/s²", "9.81 m/s²", "9.6 m/s²"], answer: "9.8 m/s²" },
+      { q: "4. Which of the following is a scalar quantity?", options: ["Velocity", "Force", "Mass", "Acceleration"], answer: "Mass" },
+      { q: "5. What is the primary function of a transformer?", options: ["To increase current", "To decrease voltage", "To change AC voltage levels", "To store energy"], answer: "To change AC voltage levels" }
+    ],
+    Chemistry: [
+      { q: "1. What is the chemical formula for water?", options: ["H₂O", "CO₂", "O₂", "H₂O₂"], answer: "H₂O" },
+      { q: "2. Which element has the atomic number 6?", options: ["Oxygen", "Carbon", "Nitrogen", "Hydrogen"], answer: "Carbon" },
+      { q: "3. What is the pH level of pure water?", options: ["7", "0", "14", "10"], answer: "7" },
+      { q: "4. What do you call a substance that speeds up a chemical reaction?", options: ["Catalyst", "Reactant", "Solvent", "Product"], answer: "Catalyst" },
+      { q: "5. Which gas is produced when an acid reacts with a metal?", options: ["Oxygen", "Hydrogen", "Carbon Dioxide", "Nitrogen"], answer: "Hydrogen" }
+    ],
+    Biology: [
+      { q: "1. What is the powerhouse of the cell?", options: ["Nucleus", "Ribosome", "Mitochondria", "Golgi Apparatus"], answer: "Mitochondria" },
+      { q: "2. What is the basic unit of life?", options: ["Tissue", "Organ", "Cell", "Organism"], answer: "Cell" },
+      { q: "3. Which process do plants use to make food?", options: ["Respiration", "Photosynthesis", "Fermentation", "Digestion"], answer: "Photosynthesis" },
+      { q: "4. What is the function of hemoglobin?", options: ["To transport oxygen", "To fight infections", "To clot blood", "To regulate temperature"], answer: "To transport oxygen" },
+      { q: "5. Which part of the plant is responsible for photosynthesis?", options: ["Roots", "Stem", "Leaves", "Flowers"], answer: "Leaves" }
+    ],
+    Mathematics: [
+      { q: "1. What is the value of π (pi) to two decimal places?", options: ["3.12", "3.14", "3.16", "3.18"], answer: "3.14" },
+      { q: "2. What is the area of a rectangle with length 5 cm and width 3 cm?", options: ["15 cm²", "8 cm²", "20 cm²", "10 cm²"], answer: "15 cm²" },
+      { q: "3. What is the square root of 144?", options: ["10", "11", "12", "13"], answer: "12" },
+      { q: "4. If x + 5 = 12, what is the value of x?", options: ["5", "7", "8", "12"], answer: "7" },
+      { q: "5. What is 25% of 200?", options: ["30", "50", "75", "100"], answer: "50" }
+    ]
+  };
+
+  function startSubjectSelection() {
+    const regNo = document.getElementById("regNo").value.trim();
+    if (!regNo) return alert("Please enter your registration number.");
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("subjectPage").classList.remove("hidden");
+  }
+
+  function startQuiz(subject) {
+    currentSubjectIndex = subjects.indexOf(subject);
+    currentQuestion = 0;
+    if (!userAnswers[subject]) userAnswers[subject] = Array(10).fill(null);
+    document.getElementById("subjectPage").classList.add("hidden");
+    document.getElementById("quizPage").classList.remove("hidden");
+    document.getElementById("subjectTitle").innerText = subject;
+    showQuestion();
+    if (!timer) timer = setInterval(updateTimer, 1000);
+  }
+
+  function showQuestion() {
+    const q = questions[subjects[currentSubjectIndex]][currentQuestion];
+    document.getElementById("questionText").innerText = q.q;
+    document.getElementById("options").innerHTML = q.options.map(opt => `
+      <div class="option">
+        <label>
+          <input type="radio" name="option" value="${opt}" ${userAnswers[subjects[currentSubjectIndex]][currentQuestion] === opt ? 'checked' : ''} />
+          ${opt}
+        </label>
+      </div>
+    `).join('');
+  }
+
+  function nextQuestion() {
+    saveAnswer();
+    if (currentQuestion < questions[subjects[currentSubjectIndex]].length - 1) {
+      currentQuestion++;
+      showQuestion();
+    } else {
+      nextSubject();
+    }
+  }
+
+  function prevQuestion() {
+    saveAnswer();
+    if (currentQuestion > 0) {
+      currentQuestion--;
+      showQuestion();
+    }
+  }
+
+  function nextSubject() {
+    if (currentSubjectIndex < subjects.length - 1) {
+      currentSubjectIndex++;
+      currentQuestion = 0;
+      startQuiz(subjects[currentSubjectIndex]);
+    } else {
+      submitQuiz();
+    }
+  }
+
+  function prevSubject() {
+    if (currentSubjectIndex > 0) {
+      currentSubjectIndex--;
+      currentQuestion = 0;
+      startQuiz(subjects[currentSubjectIndex]);
+    }
+  }
+
+  function saveAnswer() {
+    const selected = document.querySelector('input[name="option"]:checked');
+    if (selected) {
+      userAnswers[subjects[currentSubjectIndex]][currentQuestion] = selected.value;
+    }
+  }
+
+  function updateTimer() {
+    timeLeft--;
+    const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+    const s = String(timeLeft % 60).padStart(2, '0');
+    const timerElement = document.getElementById("timer");
+    
+    timerElement.innerText = `${m}:${s}`;
+    
+    if (timeLeft <= 10) {
+      timerElement.classList.remove("normal");
+      timerElement.classList.add("warning");
+      timerElement.innerText = `Warning! You have ${timeLeft} seconds left!`;
+    } else {
+      timerElement.classList.remove("warning");
+      timerElement.classList.add("normal");
+    }
+
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      submitQuiz();
+    }
+  }
+
+  function calculate() {
+    const input = document.getElementById("calcInput").value;
+    try {
+      const result = eval(input);
+      document.getElementById("calcDisplay").innerText = result;
+    } catch (error) {
+      document.getElementById("calcDisplay").innerText = "Error!";
+    }
+  }
+
+  function printResults() {
+    const results = document.getElementById("scoreResult").innerHTML;
+    const newWindow = window.open('', 'Print-Window');
+    newWindow.document.open();
+    newWindow.document.write(`
+      <html>
+        <head><title>Score Slip</title></head>
+        <body>
+          <h2>Your Score Slip</h2>
+          <div>${results}</div>
+          <button onclick="window.print()">Print</button>
+        </body>
+      </html>
+    `);
+    newWindow.document.close();
+  }
+
+  function submitQuiz() {
+    clearInterval(timer);
+    let total = 0;
+    let score = {};
+    let resultHtml = '';
+
+    subjects.forEach(subject => {
+      let subjectScore = 0;
+      questions[subject].forEach((q, i) => {
+        total++;
+        if (userAnswers[subject] && userAnswers[subject][i] === q.answer) subjectScore++;
+      });
+      const percent = Math.round((subjectScore / questions[subject].length) * 100);
+      score[subject] = { score: subjectScore, percent: percent };
+      resultHtml += `<p>${subject}: ${percent}% (${subjectScore} out of ${questions[subject].length} correct)</p>`;
+    });
+
+    document.getElementById("submitPage").classList.remove("hidden");
+    document.getElementById("quizPage").classList.add("hidden");
+    document.getElementById("scoreResult").innerHTML = `
+      <h3>Your Score</h3>
+      ${resultHtml}
+      <p>Overall: ${Math.round((Object.values(score).reduce((acc, subj) => acc + subj.score, 0) / total) * 100)}% (${Object.values(score).reduce((acc, subj) => acc + subj.score, 0)} out of ${total} correct)</p>
+      <p>Thank you for taking the test!</p>
+    `;
+  }
+</script>
+
+</body>
+</html>
